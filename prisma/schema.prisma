@@ -13,16 +13,16 @@ datasource db {
 // criar uma migration: yarn prisma migrate dev
 
 model User {
-  id              String          @id @default(uuid())
-  name            String
-  email           String
-  password        String
-  cellNumber      String
-  birthday        String
-  profile         String?
-  role            String          @default("user")
-  created_at      DateTime?       @default(now())
-  updated_at      DateTime?       @default(now())
+  id              String          @id @default(uuid()) // ID exclusivo do usuário
+  name            String          // Nome do usuário
+  email           String          // Endereço de e-mail do usuário
+  password        String          // Senha do usuário
+  cellNumber      String          // Número de celular do usuário
+  birthday        String          // Data de nascimento do usuário
+  profile         String?         // Perfil do usuário (opcional)
+  role            String          @default("user") // Função do usuário (padrão: "user")
+  created_at      DateTime?       @default(now()) // Data de criação do usuário
+  updated_at      DateTime?       @default(now()) // Data de atualização do usuário
 
   // Relacionamento com a tabela de Pagamentos (cada usuário pode ter vários pagamentos)
   payments        Payment[]
@@ -40,12 +40,12 @@ model User {
 }
 
 model PenaltyType {
-  id          String    @id @default(uuid())
+  id          String    @id @default(uuid()) // ID exclusivo do tipo de multa
   name        String    // Nome do tipo de multa (ex: "Atraso na mensalidade")
   description String?   // Descrição opcional do tipo de multa
   amount      Float     // Valor fixo da multa
-  created_at  DateTime? @default(now())
-  updated_at  DateTime? @default(now())
+  created_at  DateTime? @default(now()) // Data de criação do tipo de multa
+  updated_at  DateTime? @default(now()) // Data de atualização do tipo de multa
 
   // Relacionamento com a tabela de Pagamentos (um tipo de multa pode ser aplicado a vários pagamentos)
   payments    Payment[]
@@ -54,15 +54,15 @@ model PenaltyType {
 }
 
 model Payment {
-  id              String         @id @default(uuid())
+  id              String         @id @default(uuid()) // ID exclusivo do pagamento
   userId          String         // Chave estrangeira para o usuário que fez o pagamento
   amount          Float          // Valor do pagamento
   penaltyTypeId   String?        // Chave estrangeira para o tipo de multa (opcional)
   paymentDate     DateTime       // Data do pagamento
   description     String?        // Descrição opcional do pagamento
   membershipFeeId String?        // Chave estrangeira para a taxa de associação (opcional)
-  created_at      DateTime?      @default(now())
-  updated_at      DateTime?      @default(now())
+  created_at      DateTime?      @default(now()) // Data de criação do pagamento
+  updated_at      DateTime?      @default(now()) // Data de atualização do pagamento
 
   // Relacionamento com a tabela de Usuários
   user            User           @relation(fields: [userId], references: [id])
@@ -73,16 +73,19 @@ model Payment {
   // Relacionamento com a tabela de Taxa de Associação
   membershipFee   MembershipFee? @relation(fields: [membershipFeeId], references: [id])
 
+  // Relacionamento com a tabela de Transações de Caixa
+  cashTransaction CashTransaction[]
+
   @@map("payments")
 }
 
 model Attendance {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) // ID exclusivo da presença
   userId      String   // Chave estrangeira para o usuário que confirmou presença
   gameId      String   // Chave estrangeira para o jogo
   isAttending Boolean  // Se o usuário está confirmado para o jogo
-  created_at  DateTime? @default(now())
-  updated_at  DateTime? @default(now())
+  created_at  DateTime? @default(now()) // Data de criação da presença
+  updated_at  DateTime? @default(now()) // Data de atualização da presença
 
   // Relacionamentos com as tabelas de Usuários e Jogos
   user        User     @relation(fields: [userId], references: [id])
@@ -92,11 +95,11 @@ model Attendance {
 }
 
 model Game {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid()) // ID exclusivo do jogo
   date       DateTime // Data e hora do jogo
   location   String   // Local do jogo
-  created_at DateTime? @default(now())
-  updated_at DateTime? @default(now())
+  created_at DateTime? @default(now()) // Data de criação do jogo
+  updated_at DateTime? @default(now()) // Data de atualização do jogo
 
   // Relacionamento com a tabela de Presenças (um jogo pode ter várias presenças)
   attendances Attendance[]
@@ -105,31 +108,37 @@ model Game {
 }
 
 model CashTransaction {
-  id             String   @id @default(uuid())
+  id             String   @id @default(uuid()) // ID exclusivo da transação de caixa
   description    String   // Descrição da transação (ex: "Mensalidade de junho de 2023")
   amount         Float    // Valor da transação (positivo para entradas, negativo para saídas)
   transactionDate DateTime // Data da transação
-  created_at     DateTime @default(now())
-  updated_at     DateTime @default(now())
+  created_at     DateTime @default(now()) // Data de criação da transação
+  updated_at     DateTime @default(now()) // Data de atualização da transação
 
   // Relacionamento com a tabela de Usuários (opcional, se a transação envolver um usuário específico)
   userId         String?
   user           User?    @relation(fields: [userId], references: [id])
 
+  // Relacionamento com a tabela de Pagamentos
+  paymentId      String?
+  payment        Payment? @relation(fields: [paymentId], references: [id])
+
   @@map("cash_transactions")
 }
 
 model MembershipFee {
-  id              String    @id @default(uuid())
-  userId          String
-  month           Int
-  year            Int
-  amount          Float
-  isPaid          Boolean
-  paymentDate     DateTime
-  description     String?
-  created_at      DateTime? @default(now())
-  updated_at      DateTime? @default(now())
+  id              String   @id @default(uuid()) // ID exclusivo da taxa de associação
+  userId          String   // Chave estrangeira para o usuário relacionado à taxa de associação
+  month           Int      // Mês da taxa de associação
+  year            Int      // Ano da taxa de associação
+  amount          Float    // Valor da taxa de associação
+  isPaid          Boolean  // Indica se a taxa foi paga
+  paymentDate     DateTime // Data do pagamento da taxa
+  description     String?  // Descrição opcional da taxa
+  created_at      DateTime? @default(now()) // Data de criação da taxa de associação
+  updated_at      DateTime? @default(now()) // Data de atualização da taxa de associação
+
+  // Relacionamento com a tabela de Usuários
   user            User      @relation(fields: [userId], references: [id])
   payments        Payment[]
 
