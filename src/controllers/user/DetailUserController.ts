@@ -9,8 +9,10 @@ class DetailuserController{
     const detailUserService = new DetailUserService();
 
     const user = await detailUserService.execute(user_id);
+    const fileUrl = `http://localhost:3333/files/${user.profile}`;
+    const updatedUser = { ...user, profile: fileUrl };
 
-    return res.json(user);
+    return res.json(updatedUser);
 
   }
 }

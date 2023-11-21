@@ -5,6 +5,7 @@ class ListPaymentService{
 
     const payment = await prismaClient.payment.findMany({
       select:{
+        id: true,
         userId: true,
         amount: true,
         penaltyTypeId: true,

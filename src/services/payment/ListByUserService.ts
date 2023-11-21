@@ -7,13 +7,13 @@ interface UserRequest{
 class ListByUserService{
   async execute({ userId }: UserRequest){
     
-    const findByTeam = await prismaClient.payment.findMany({
+    const findByUser = await prismaClient.payment.findMany({
       where:{
         userId: userId
       }
     })
 
-    return findByTeam;
+    return findByUser;
 
   }
 }

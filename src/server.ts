@@ -2,8 +2,9 @@ import express, { Request, Response, NextFunction } from 'express'
 import 'express-async-errors';
 import cors from 'cors';
 import path from 'path'
-
 import { router } from './routes'
+
+process.env.TZ = 'America/Sao_Paulo';
 
 const app = express();
 app.use(express.json());

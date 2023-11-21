@@ -7,22 +7,22 @@ class CreateUserController {
 
     const createUserService = new CreateUserService();
 
-    if (!req.file) {
-      throw new Error('Error uploading file');
-    } else {
-      const { originalname, filename: profile } = req.file;
-
-      const user = await createUserService.execute({
-        name,
-        email,
-        password,
-        cellNumber,
-        birthday,
-        profile,
-      });
-
-      return res.json(user);
+    let profile = null;
+    if (req.file) {
+      const { originalname, filename } = req.file;
+      profile = filename;
     }
+
+    const user = await createUserService.execute({
+      name,
+      email,
+      password,
+      cellNumber,
+      birthday,
+      profile,
+    });
+
+    return res.json(user);
   }
 }
 
