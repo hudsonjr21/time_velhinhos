@@ -21,6 +21,7 @@ import { ListCashTransactionController } from './controllers/cashTransaction/Lis
 import { CreateMembershipFeeController } from './controllers/membershipFee/CreateMembershipFeeController ';
 import { ListMembershipFeeController } from './controllers/membershipFee/ListMembershipFeeController ';
 import { ListAttendanceController } from './controllers/attendance/ListAttendanceController';
+import { ListByBirthdayUserController } from './controllers/user/ListByBirthdayUserController';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.get('/users', new ListUserController().handle)
 router.post('/session', new AuthUserController().handle)
 router.get('/me', isAuthenticated,  new DetailuserController().handle )
 router.put('/user', isAuthenticated, upload.single('file'), new UpdateUserController().handle )
+router.get('/users/birthday', new ListByBirthdayUserController().handle)
 
 //-- ROTAS MULTA --
 router.post('/type-penalty', new CreatePenaltyTypeController().handle)
