@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "ts-node-dev src/server.ts",
+    "start:dev": "ts-node-dev src/server.ts",
     "vercel-build": "npx prisma migrate deploy",
     "build": "prisma generate"
   },
@@ -28,6 +28,7 @@
     "jsonwebtoken": "^9.0.1",
     "moment-timezone": "^0.5.43",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "prisma": "^5.0.0"
   }
 }

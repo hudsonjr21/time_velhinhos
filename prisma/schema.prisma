@@ -135,6 +135,7 @@ model MembershipFee {
   isPaid          Boolean  // Indica se a taxa foi paga
   paymentDate     DateTime // Data do pagamento da taxa
   description     String?  // Descrição opcional da taxa
+  receiptPayment  String  // Comprovante de pagamento da taxa
   created_at      DateTime? @default(now()) // Data de criação da taxa de associação
   updated_at      DateTime? @default(now()) // Data de atualização da taxa de associação
 

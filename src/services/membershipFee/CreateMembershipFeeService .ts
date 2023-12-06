@@ -1,97 +1,143 @@
 import prismaClient from '../../prisma';
+import cron from 'node-cron';
+import { scheduleMonthlyFees } from './monthlyFeeScheduler';
+import { ListPenaltyTypeService } from '../penalty/ListPenaltyTypeService';
+
+// Agendando a execução da função scheduleMonthlyFees para o dia 11 de cada mês às 00:00
+cron.schedule('0 0 11 * *', async () => {
+    try {
+        console.log('Verificando se há mensalidades a serem pagas...');
+        await scheduleMonthlyFees();
+    } catch (error) {
+        console.error('Erro ao verificar as taxas mensais:', error);
+    }
+});
 
 interface CreateMembershipFeeRequest {
   userId: string;
   month?: number;
   year?: number;
+  receiptPayment: string;
 }
 
 class CreateMembershipFeeService {
-  async execute({ userId, month, year }: CreateMembershipFeeRequest) {
+  async execute({ userId, month, year, receiptPayment }: CreateMembershipFeeRequest) {
     try {
       const currentDate = new Date();
       const currentMonth = month || currentDate.getMonth() + 1;
       const currentYear = year || currentDate.getFullYear();
-      const dayOfMonth = currentDate.getDate();
 
+      // Verifica se já existe uma mensalidade para o usuário neste mês e ano
       const existingMembershipFee = await prismaClient.membershipFee.findFirst({
         where: {
           userId,
-          month: currentMonth,
-          year: currentYear,
+          month: Number(currentMonth),
+          year: Number(currentYear),
         },
       });
 
       if (existingMembershipFee) {
-        // Verifica se já existe uma mensalidade para o usuário neste mês e ano
+        // Se a mensalidade já está paga, retorna a mensalidade existente
         if (existingMembershipFee.isPaid) {
-          // Se já está paga, alerta que a mensalidade já foi paga para este mês e ano
-          console.log('Membership fee is already paid for this month/year');
+          console.log(`Mensalidade ${Number(currentMonth)}/${Number(currentYear)} já paga!`);
           return existingMembershipFee;
-        } else if (dayOfMonth <= 10) {
-          // Se ainda não está paga e a data atual é até o dia 10, atualiza para paga
+        }
+
+        // Calcula a data limite para pagamento da mensalidade
+        const latePaymentDate = new Date(currentYear, currentMonth - 2, 10); // Dia 10 do mês anterior
+
+        // Se a data atual for após a data limite, aplica multa e atualiza a mensalidade para paga
+        if (currentDate > latePaymentDate) {
+          let totalAmount = existingMembershipFee.amount
+
           const updatedMembershipFee = await prismaClient.membershipFee.update({
             where: { id: existingMembershipFee.id },
-            data: { isPaid: true },
+            data: { isPaid: true, receiptPayment, amount: totalAmount },
           });
+
+          // Cria o pagamento e a transação de caixa associada ao pagamento
+          await this.createPaymentAndCashTransaction(updatedMembershipFee, totalAmount, userId, currentDate);
+          console.log(`Mensalidade ${Number(currentMonth)}/${Number(currentYear)} paga com multa!`);
           return updatedMembershipFee;
         }
-      } else if (!existingMembershipFee && dayOfMonth <= 10) {
-        // Se não existe e a data atual é até o dia 10, cria uma nova mensalidade
-        let feeAmount = 20.0; // Valor fixo da taxa
 
-        // Lógica para calcular o valor a pagar após o dia 10 do mês
-        const latePaymentDate = new Date(currentYear, currentMonth - 1, 10); // Dia 10 do mês
-        if (currentDate > latePaymentDate) {
-          const lateMonths = Math.max(0, currentDate.getMonth() - latePaymentDate.getMonth());
-          const lateFee = 10.0 * lateMonths;
-          feeAmount += lateFee;
-        }
+        // Retorna a mensalidade existente se o pagamento não estiver atrasado
+        return existingMembershipFee;
+      } else {
+        // Busca as informações das taxas do banco de dados
+        const listPenaltyService = new ListPenaltyTypeService();
+        const penaltyTypes = await listPenaltyService.execute();
 
-        const isPaid = false; // Mensalidade não está paga ainda
+        // Encontrar a taxa desejada pelo ID
+        const desiredPenaltyType = penaltyTypes.find(type => type.id === '0420576e-d5a2-4da2-9c75-c14f1784100b');
 
-        const newMembershipFee = await prismaClient.membershipFee.create({
-          data: {
-            userId,
-            month: currentMonth,
-            year: currentYear,
-            amount: feeAmount,
-            isPaid,
-            paymentDate: currentDate,
-            description: `Membership fee for ${currentMonth}/${currentYear}`,
-          },
-        });
+        if (desiredPenaltyType) {
+          // Use o valor da taxa selecionada para a mensalidade
+          let feeAmount = desiredPenaltyType.amount;
 
-        // Cria automaticamente um pagamento associado à taxa de associação
-        const payment = await prismaClient.payment.create({
-          data: {
-            userId,
-            amount: feeAmount,
-            paymentDate: currentDate,
-            description: `Membership fee for ${currentMonth}/${currentYear}`,
-            membershipFeeId: newMembershipFee.id,
-          },
-        });
+          // Calcula a data limite para pagamento da mensalidade
+          const latePaymentDate = new Date(currentYear, currentMonth - 1, 10);
 
-        // Cria automaticamente uma transação de caixa associada ao pagamento
-        const cashTransaction = await prismaClient.cashTransaction.create({
-          data: {
-            userId,
-            description: `Payment for membership fee for ${currentMonth}/${currentYear}`,
-            amount: feeAmount,
-            transactionDate: currentDate,
-            paymentId: payment.id,
-          },
-        });
+          // Verifica se a mensalidade foi paga após o prazo de pagamento
+          if (currentDate > latePaymentDate) {
+            feeAmount += 10.0;
+            console.log(`Mensalidade ${Number(currentMonth)}/${Number(currentYear)} paga com multa!`);
+          } else {
+            console.log(`Mensalidade ${Number(currentMonth)}/${Number(currentYear)} paga sem multa!`);
+          }
 
-        return newMembershipFee;
-      }
+      // Cria uma nova mensalidade e define como paga
+      const newMembershipFee = await prismaClient.membershipFee.create({
+        data: {
+          userId,
+          month: Number(currentMonth),
+          year: Number(currentYear),
+          amount: feeAmount,
+          isPaid: true,
+          receiptPayment,
+          paymentDate: currentDate,
+          description: `Membership fee for ${currentMonth}/${currentYear}`,
+        },
+      });
 
-      // Retorna null caso não haja necessidade de criar ou atualizar uma mensalidade
-      return null;
-    } catch (error) {
-      throw new Error('Failed to create/update membership fee');
+      // Cria o pagamento e a transação de caixa associada ao pagamento
+      await this.createPaymentAndCashTransaction(newMembershipFee, feeAmount, userId, currentDate);
+
+      return newMembershipFee;
+    } else {
+      // Trate o caso em que a taxa desejada não foi encontrada
+      throw new Error('Taxa não encontrada');
     }
+        }
+      } catch (error) {
+        console.error(error);
+        throw new Error('Erro ao pagar mensalidade!');
+      }
+  }
+
+  // Método para criar o pagamento e a transação de caixa
+  async createPaymentAndCashTransaction(membershipFee: any, amount: number, userId: string, currentDate: Date) {
+    // Cria um novo pagamento associado à taxa de associação
+    const payment = await prismaClient.payment.create({
+      data: {
+        userId,
+        amount,
+        paymentDate: currentDate,
+        description: `Membership fee for ${membershipFee.month}/${membershipFee.year}`,
+        membershipFeeId: membershipFee.id,
+      },
+    });
+
+    // Cria uma transação de caixa associada ao pagamento
+    const cashTransaction = await prismaClient.cashTransaction.create({
+      data: {
+        userId,
+        description: `Payment for membership fee for ${membershipFee.month}/${membershipFee.year}`,
+        amount,
+        transactionDate: currentDate,
+        paymentId: payment.id,
+      },
+    });
   }
 }
 

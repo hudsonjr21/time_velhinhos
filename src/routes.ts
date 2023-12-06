@@ -22,22 +22,26 @@ import { CreateMembershipFeeController } from './controllers/membershipFee/Creat
 import { ListMembershipFeeController } from './controllers/membershipFee/ListMembershipFeeController ';
 import { ListAttendanceController } from './controllers/attendance/ListAttendanceController';
 import { ListByBirthdayUserController } from './controllers/user/ListByBirthdayUserController';
+import { UpdatePenaltyTypeController } from './controllers/penalty/UpdatePenaltyTypeController';
 
 const router = Router();
 
 const upload = multer(uploadConfig.upload("./tmp"));
+const uploadPayment = multer(uploadConfig.upload("./receiptPayment"));
+
 
 //-- ROTAS USER --
 router.post('/users', upload.single('file'), new CreateUserController().handle)
 router.get('/users', new ListUserController().handle)
 router.post('/session', new AuthUserController().handle)
 router.get('/me', isAuthenticated,  new DetailuserController().handle )
-router.put('/user', isAuthenticated, upload.single('file'), new UpdateUserController().handle )
+router.put('/user', isAuthenticated, upload.single('file'), new UpdateUserController().handle)
 router.get('/users/birthday', new ListByBirthdayUserController().handle)
 
 //-- ROTAS MULTA --
 router.post('/type-penalty', new CreatePenaltyTypeController().handle)
 router.get('/type-penalty', new ListPenaltyTypeController().handle)
+router.put('/type-penalty/update', isAuthenticated, new UpdatePenaltyTypeController().handle)
 
 //-- ROTAS PAGAMENTO --
 router.post('/payment', new CreatePaymentController().handle)
@@ -56,7 +60,7 @@ router.post('/cash', new CreateCashTransactionController().handle)
 router.get('/cash', new ListCashTransactionController().handle)
 
 //-- ROTAS MENSALIDADE --
-router.post('/membership-fee', new CreateMembershipFeeController().handle)
+router.post('/membership-fee',uploadPayment.single('file'), new CreateMembershipFeeController().handle)
 router.get('/membership-fee', new ListMembershipFeeController().handle)
 
 export { router };

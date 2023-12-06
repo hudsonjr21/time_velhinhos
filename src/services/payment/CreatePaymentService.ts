@@ -1,4 +1,16 @@
 import prismaClient from '../../prisma';
+import cron from 'node-cron';
+import { applyPenaltiesForAttendance } from '../attendance/attendancePenaltyScheduler';
+
+// Agendar a execução da função para criar multas um dia antes do jogo, após o meio dia do dia anterior ao jogo
+cron.schedule('00 12 * * *', async () => {
+  try {
+      console.log('Verificando jogos do dia seguinte e aplicando multas...');
+      await applyPenaltiesForAttendance();
+  } catch (error) {
+      console.error('Erro ao aplicar multas de nome da lista..', error);
+  }
+});
 
 interface CreatePaymentRequest {
   userId: string;

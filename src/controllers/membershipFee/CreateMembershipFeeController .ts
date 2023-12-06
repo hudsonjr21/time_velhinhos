@@ -3,16 +3,26 @@ import { CreateMembershipFeeService } from '../../services/membershipFee/CreateM
 
 class CreateMembershipFeeController {
   async handle(req: Request, res: Response) {
-    const { userId } = req.body;
+    const { userId, month, year } = req.body;
 
     const createMembershipFeeService = new CreateMembershipFeeService();
 
-    try {
-      const membershipFee = await createMembershipFeeService.execute(userId);
+    if (!req.file) {
+      throw new Error('Error uploading file');
+    } else {
+      const { originalname, filename: receiptPayment } = req.file;
 
-      return res.json(membershipFee);
-    } catch (error) {
-      return res.status(400).json({ error: error.message });
+      try {
+        const membershipFee = await createMembershipFeeService.execute({
+          userId,
+          month,
+          year,
+          receiptPayment
+        });
+        return res.json(membershipFee);
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
     }
   }
 }
